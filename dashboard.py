@@ -2,15 +2,22 @@ import streamlit as st
 import pandas as pd
 import hashlib
 import plotly.express as px
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+
+# Google Sheets setup
+scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
+client = gspread.authorize(creds)
+sheet = client.open("UserDB").sheet1  # Use your actual sheet name
+
 
 # Load user data
 @st.cache_data
 def load_user_data():
-    try:
-        df = pd.read_csv("users.csv", header=None, names=["username", "hashed_password"])
-        return df
-    except FileNotFoundError:
-        return pd.DataFrame(columns=["username", "hashed_password"])
+    users = sheet.get_all_records()
+    return pd.DataFrame(users)
+
 
 # Page config
 st.set_page_config("User Management Dashboard", layout="wide")
