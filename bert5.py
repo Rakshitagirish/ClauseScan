@@ -22,7 +22,14 @@ from transformers import BertTokenizer, BertModel, pipeline
 import plotly.express as px
 import random
 import string
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
+# Google Sheets setup
+scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
+client = gspread.authorize(creds)
+sheet = client.open("data").sheet1 
 
 
 
@@ -557,31 +564,24 @@ from datetime import datetime
 def save_user(username, password):
     hashed = hash_password(password)
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    with open(USER_DB_PATH, mode='a', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow([username, hashed, timestamp])
+    sheet.append_row([username, hashed, timestamp])
+
+
 
 
 def user_exists(username):
-    if not os.path.exists(USER_DB_PATH):
-        return False
-    with open(USER_DB_PATH, mode='r') as file:
-        reader = csv.reader(file)
-        for row in reader:
-            if row[0] == username:
-                return True
-    return False
+    users = sheet.col_values(1)  # column 1 = usernames
+    return username in users
+
 
 def authenticate_user(username, password):
-    if not os.path.exists(USER_DB_PATH):
-        return False
     hashed = hash_password(password)
-    with open(USER_DB_PATH, mode='r') as file:
-        reader = csv.reader(file)
-        for row in reader:
-            if row[0] == username and row[1] == hashed:
-                return True
+    users = sheet.get_all_records()
+    for user in users:
+        if user["username"] == username and user["hashed_password"] == hashed:
+            return True
     return False
+
 def generate_captcha(length=5):
     characters = string.ascii_uppercase + string.digits
     return ''.join(random.choices(characters, k=length))
